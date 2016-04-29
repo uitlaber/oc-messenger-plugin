@@ -1,0 +1,110 @@
+{% set wsurl = __SELF__.wsurl %}
+{% set friends = __SELF__.friends %}
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/1.0.21/vue.min.js"></script>
+<div class="messenger-app">
+    <div class="inner">
+
+        <div class="message-list" v-if="selectedFriend">
+            <div v-for="message in messages">
+                <div class="username"><img :src="message.from_info.avatar" alt="">{{ '{{message.from_info.username}}' }}</div>
+                <div class="time">{{ '{{message.time}}' }}</div>
+                {{ '{{message.body}}' }}
+            </div>
+            <form @submit.prevent.stop="sendMessage">
+                <div class="form-group">
+                    <textarea v-model="message" @keydown.enter.prevent.stop="sendMessage" name="message" class="form-control"></textarea>
+                    <input type="hidden" name="event" value="on.message_send">
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-success">Отправить</button>
+                </div>
+
+            </form>
+        </div>
+
+
+    </div>
+    <div class="friend-list">
+        <ul class="nav nav-pills nav-stacked">
+            <li v-for="friend in friends" @click="selectFriend(friend)">
+                <img :src="friend.avatar" alt=""> {{ '{{friend.username}}' }}
+            </li>
+        </ul>
+    </div>
+     <pre>
+                {{'{{$data|json}}'}}
+            </pre>
+</div>
+{% put scripts %}
+<script>
+
+
+    new Vue({
+        el: '.messenger-app',
+        data: {
+            ws: null,
+            to: null,
+            message: null,
+            messages: new Array(),
+            conn: null,
+            friends: new Array(),
+            selectedFriend: null
+        },
+        ready: function () {
+            var self = this;
+            self.conn = new WebSocket('{{wsurl}}');
+            self.conn.onopen = function(e) {
+                console.log("Connection established!");
+            };
+            self.conn.onmessage = function(e) {
+                var result = $.parseJSON(e.data);
+
+                if(result.event == 'on.message_send'){
+                    self.messages.push(result);
+                }
+            };
+
+            this.getFriends();
+        },
+        methods: {
+            sendMessage: function () {
+                var data = {
+                    to: this.to,
+                    body: this.message,
+                    event: 'on.message'
+                };
+                this.message = '';
+                this.conn.send(JSON.stringify(data));
+            },
+            getMessages: function (user_id) {
+                var self = this;
+              $.request('onGetPrivateMessage',{
+                data: {user_id: user_id},
+                success: function (data) {
+                    console.log(data);
+                    self.messages = data;
+                }
+              });
+            },
+            getFriends: function () {
+                var self = this;
+                $.request('onGetFriends',{
+                    success: function (data) {
+                        console.log(data);
+                        self.friends =  data;
+                    }
+                });
+            },
+            selectFriend: function (friend) {
+                this.selectedFriend = friend;
+                this.to = friend.id;
+                this.getMessages(friend.id);
+            }
+        }
+
+
+    });
+</script>
+{% endput %}

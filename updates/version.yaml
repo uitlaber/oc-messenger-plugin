@@ -1,0 +1,4 @@
+1.0.1:
+    - First version of messenger
+    - create_messages_table.php
+    - create_friendships_table.php
